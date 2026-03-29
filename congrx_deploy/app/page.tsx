@@ -1,4 +1,5 @@
-import { redirect } from 'next/navigation'
 export default function Home() {
-  redirect('/app.html')
+  return (
+    <script dangerouslySetInnerHTML={{__html: `window.location.href='/app.html'`}} />
+  )
 }
