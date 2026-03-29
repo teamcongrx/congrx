@@ -1,8 +1,4 @@
-import fs from 'fs'
-import path from 'path'
-
+import { redirect } from 'next/navigation'
 export default function Home() {
-  return (
-    <div dangerouslySetInnerHTML={{ __html: '' }} />
-  )
+  redirect('/app.html')
 }
