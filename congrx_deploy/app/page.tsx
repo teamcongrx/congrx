@@ -1,5 +1,8 @@
-import { redirect } from 'next/navigation'
-
 export default function Home() {
-  redirect('/index.html')
+  return (
+    <div>
+      <h1>CongrX</h1>
+      <p>Coming soon at congrx.com</p>
+    </div>
+  )
 }
