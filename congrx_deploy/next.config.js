@@ -6,13 +6,23 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  async rewrites() {
+  async headers() {
     return [
       {
         source: '/api/:path*',
-        destination: '/api/:path*',
+        headers: [{ key: 'x-custom-header', value: 'api' }],
       },
     ]
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: '/api/:path*',
+          destination: '/api/:path*',
+        },
+      ],
+    }
   },
 }
 
