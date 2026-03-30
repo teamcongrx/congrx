@@ -1,28 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  async headers() {
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
+  async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        headers: [{ key: 'x-custom-header', value: 'api' }],
+        source: '/',
+        destination: '/index.html',
       },
     ]
-  },
-  async rewrites() {
-    return {
-      beforeFiles: [
-        {
-          source: '/api/:path*',
-          destination: '/api/:path*',
-        },
-      ],
-    }
   },
 }
 
