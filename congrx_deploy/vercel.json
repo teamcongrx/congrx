@@ -7,7 +7,7 @@
     { "source": "/api/digest", "destination": "/api/digest" },
     { "source": "/api/seed", "destination": "/api/seed" },
     { "source": "/api/health", "destination": "/api/health" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/site.html" }
   ],
   "crons": [
     { "path": "/api/scrape", "schedule": "0 0 * * *" },
