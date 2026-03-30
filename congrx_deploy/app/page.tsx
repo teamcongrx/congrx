@@ -1,4 +1,6 @@
 /* eslint-disable */
+import { redirect } from 'next/navigation'
+
 export default function Home() {
-  return <div>test</div>
+  redirect('/index.html')
 }
