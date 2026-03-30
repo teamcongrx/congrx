@@ -843,10 +843,10 @@ function setChamber(c){
   document.getElementById('ch-house').classList.toggle('active',c==='house');
   // Update stats row
   var isSenate=c==='senate';
-  var total=isSenate?100:432;
-  var rep=isSenate?53:220;
-  var dem=isSenate?45:211;
-  var ind=isSenate?2:1;
+  var total=isSenate?mockSenators.length:mockHouseMembers.length;
+  var rep=isSenate?mockSenators.filter(function(m){return m.party==='R';}).length:mockHouseMembers.filter(function(m){return m.party==='R';}).length;
+  var dem=isSenate?mockSenators.filter(function(m){return m.party==='D';}).length:mockHouseMembers.filter(function(m){return m.party==='D';}).length;
+  var ind=isSenate?mockSenators.filter(function(m){return m.party==='I'||m.party==='Ind';}).length:mockHouseMembers.filter(function(m){return m.party==='I'||m.party==='Ind';}).length;
   var label=isSenate?'Total senators':'Seated representatives';
   document.getElementById('stat-total-label').textContent=label;
   document.getElementById('stat-total-val').textContent=total;
