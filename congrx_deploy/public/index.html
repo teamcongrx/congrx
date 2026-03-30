@@ -917,7 +917,7 @@ function renderTrends(){
 function renderKwTags(){document.getElementById('kwTags').innerHTML=kwList.map(k=>`<div class="kw-tag" onclick="this.classList.toggle('active')">${k}</div>`).join('');}
 function renderToday(){
   document.getElementById('todayDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-  var topic=activeTodayFilt||'all';
+  var topic=typeof activeTodayFilt!=='undefined'?activeTodayFilt:(typeof todayFilt!=='undefined'?todayFilt:'all');
   fetch('/api/tweets/today?limit=50'+(topic!=='all'?'&topic='+topic:''))
     .then(r=>r.json())
     .then(function(tweets){
