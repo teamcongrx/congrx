@@ -1,11 +1,11 @@
 /* eslint-disable */
-export const dynamic = 'force-dynamic'
-
 export default function Home() {
   return (
-    <html>
+    <html lang="en">
       <head>
-        <meta httpEquiv="refresh" content="0; url=/app.html" />
+        <meta charSet="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta httpEquiv="refresh" content="0; url=/site.html" />
       </head>
       <body></body>
     </html>
