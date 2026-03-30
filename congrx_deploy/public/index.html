@@ -1279,5 +1279,25 @@ fetch(SUPABASE_URL+'/rest/v1/members?select=*&order=name.asc&limit=600',{
 
 document.getElementById('todayDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 </script>
-</body>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const supabaseUrl = 'https://smspdtvvhnxprwqxkhqp.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtc3BkdHZ2aG54cHJ3cXhraHFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MzIzNTksImV4cCI6MjA5MDMwODM1OX0.lJHSww1XzbKfD3Ur4NJ2w-6q8CoAPkU48L5Qofw2W0s';
+      const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+      async function loadMembersFromSupabase() {
+        const { data, error } = await supabaseClient
+          .from('members')
+          .select('*');
+        if (error) { console.error('Supabase error:', error); return; }
+        console.log('Loaded:', data.length, 'members');
+        renderMembers(data);
+      }
+
+      loadMembersFromSupabase();
+    </script>
+
+  </body>
 </html>
