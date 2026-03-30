@@ -1,4 +1,14 @@
 {
+  "rewrites": [
+    { "source": "/api/subscribe", "destination": "/api/subscribe" },
+    { "source": "/api/tweets/:path*", "destination": "/api/tweets/:path*" },
+    { "source": "/api/trending", "destination": "/api/trending" },
+    { "source": "/api/scrape", "destination": "/api/scrape" },
+    { "source": "/api/digest", "destination": "/api/digest" },
+    { "source": "/api/seed", "destination": "/api/seed" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "crons": [
     { "path": "/api/scrape", "schedule": "0 0 * * *" },
     { "path": "/api/digest", "schedule": "0 8 * * *" }
