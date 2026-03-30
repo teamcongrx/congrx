@@ -1240,7 +1240,24 @@ function renderScorecard(){
     </div>`).join('');
 }
 
-renderMembers();renderTrends();renderKwTags();renderTweets();
+// Load real members from Supabase
+var SUPABASE_URL='YOUR_SUPABASE_URL';
+var SUPABASE_ANON_KEY='YOUR_SUPABASE_ANON_KEY';
+
+fetch(SUPABASE_URL+'/rest/v1/members?select=*&order=name.asc&limit=600',{
+  headers:{
+    'apikey':SUPABASE_ANON_KEY,
+    'Authorization':'Bearer '+SUPABASE_ANON_KEY
+  }
+}).then(r=>r.json()).then(function(members){
+  if(members&&members.length){
+    mockSenators=members.filter(m=>m.chamber==='senate');
+    mockHouseMembers=members.filter(m=>m.chamber==='house');
+  }
+  renderMembers();renderTrends();renderKwTags();renderTweets();
+}).catch(function(){
+  renderMembers();renderTrends();renderKwTags();renderTweets();
+});
 
 // ── Background stars ──────────────────────────────────────────────────────────
 (function(){
