@@ -855,6 +855,8 @@ function setChamber(c){
   document.getElementById('stat-ind-val').textContent=ind;
   var vacEl=document.getElementById('stat-vac');
   if(vacEl) vacEl.style.display=isSenate?'none':'flex';
+  document.querySelectorAll('.party-tab')[0].textContent='R · '+rep;
+  document.querySelectorAll('.party-tab')[1].textContent='D · '+dem;
   renderMembers();renderTweets();
 }
 function setParty(p){
