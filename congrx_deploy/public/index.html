@@ -864,9 +864,9 @@ function setParty(p){
 }
 function filterMembers(v){memberSearchVal=v.toLowerCase();renderMembers();}
 function renderMembers(){
-  var data=activeChamber==='senate'?mockSenators:mockHouseMembers;
-  var list=data.filter(m=>m.party===activeParty&&(!memberSearchVal||m.name.toLowerCase().includes(memberSearchVal)||m.state.toLowerCase().includes(memberSearchVal)));
-  document.getElementById('memberList').innerHTML=list.map(m=>`<div class="member-item${selMember===m.id?' sel':''}" onclick="selectMember(${m.id})"><div class="av ${m.party.toLowerCase()}">${ini(m.name)}</div><div style="flex:1;min-width:0"><div class="mname">${m.name}</div><div class="msub">${m.state}${m.district?' · '+m.district:''} · @${m.handle}</div></div></div>`).join('');
+  var list=(activeChamber==='senate'?mockSenators:mockHouseMembers)
+    .filter(m=>(!activeParty||m.party===activeParty)&&(!memberSearchVal||m.name.toLowerCase().includes(memberSearchVal)));
+  document.getElementById('memberList').innerHTML=list.map(m=>'<div class="member-item'+(selMember===m.id?' sel':'')+ '" onclick="selectMember('+m.id+')"><div class="av '+m.party.toLowerCase()+'" style="width:30px;height:30px;font-size:10px">'+ini(m.name)+'</div><div><div class="mname">'+m.name+'</div><div class="msub">'+m.state+' · @'+m.handle+'</div></div></div>').join('');
 }
 function selectMember(id){selMember=selMember===id?null:id;renderMembers();renderTweets();}
 function renderTweets(){
