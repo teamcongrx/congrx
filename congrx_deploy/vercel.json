@@ -1,6 +1,9 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/:path((?!api/).*)",
+      "destination": "/index.html"
+    }
   ],
   "crons": [
     { "path": "/api/scrape", "schedule": "0 0 * * *" },
