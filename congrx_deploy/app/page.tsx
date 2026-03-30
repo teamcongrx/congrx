@@ -1,11 +1,11 @@
 /* eslint-disable */
-export const dynamic = 'force-dynamic'
-
 export default function Home() {
   return (
-    <iframe 
-      src="/app.html" 
-      style={{width:'100%', height:'100vh', border:'none'}}
-    />
+    <html>
+      <head>
+        <meta httpEquiv="refresh" content="0; url=/index.html" />
+      </head>
+      <body></body>
+    </html>
   )
 }
