@@ -843,7 +843,7 @@ function setChamber(c){
   document.getElementById('ch-house').classList.toggle('active',c==='house');
   // Update stats row
   var isSenate=c==='senate';
-  var total=isSenate?mockSenators.length:mockHouseMembers.length;
+  var total=isSenate?100:432;
   var rep=isSenate?mockSenators.filter(function(m){return m.party==='R';}).length:mockHouseMembers.filter(function(m){return m.party==='R';}).length;
   var dem=isSenate?mockSenators.filter(function(m){return m.party==='D';}).length:mockHouseMembers.filter(function(m){return m.party==='D';}).length;
   var ind=isSenate?mockSenators.filter(function(m){return m.party==='I'||m.party==='Ind';}).length:mockHouseMembers.filter(function(m){return m.party==='I'||m.party==='Ind';}).length;
