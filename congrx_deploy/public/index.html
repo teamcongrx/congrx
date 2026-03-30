@@ -748,15 +748,17 @@ function subscribeDigest(){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({email:email})
   }).then(function(r){
-    if(r.ok){
-      btn.textContent='✓ Subscribed!';
-      btn.style.background='#2d6a4f';
-      document.getElementById('digest-email').value='';
-    } else {
-      btn.textContent='Subscribe Free';
-      btn.disabled=false;
-      alert('Something went wrong. Please try again.');
-    }
+    return r.json().then(function(data){
+      if(r.ok){
+        btn.textContent='✓ Subscribed!';
+        btn.style.background='#2d6a4f';
+        document.getElementById('digest-email').value='';
+      } else {
+        btn.textContent='Subscribe Free';
+        btn.disabled=false;
+        alert('Error: '+(data.error||'Something went wrong.'));
+      }
+    });
   }).catch(function(){
     btn.textContent='Subscribe Free';
     btn.disabled=false;
@@ -868,25 +870,78 @@ function renderMembers(){
 }
 function selectMember(id){selMember=selMember===id?null:id;renderMembers();renderTweets();}
 function renderTweets(){
-  var el=document.getElementById('tweetArea');
-  var label=activeChamber==='senate'?'senator':'representative';
-  if(!selMember){el.innerHTML='<div class="empty">Select a '+label+' to view their tweets</div>';return;}
-  var data=activeChamber==='senate'?mockSenators:mockHouseMembers;
-  var tweetData=activeChamber==='senate'?mockTweets:mockHouseTweets;
-  var m=data.find(x=>x.id===selMember);
-  var tweets=tweetData[selMember]||[];
-  el.innerHTML=`<div class="sel-banner"><div class="av ${m.party.toLowerCase()}" style="width:32px;height:32px;font-size:10px">${ini(m.name)}</div><div><div style="font-weight:600;font-size:13px">${m.name}</div><div style="font-size:11px;color:#a8b0c0" class="sc-sub">${m.state} · <span style="color:#2563eb">@${m.handle}</span></div></div><div onclick="selMember=null;renderMembers();renderTweets()" style="margin-left:auto;cursor:pointer;color:#bbb;font-size:18px;padding:4px 8px">×</div></div>`+
-  (tweets.length?`<div class="tweet-list">`+tweets.map(tw=>`<div class="tweet-card"><div class="twname">${tw.name}</div><div class="twmeta"><span style="color:#2563eb">@${tw.handle}</span><span class="badge ${tw.party.toLowerCase()}">${tw.party==='D'?'Democrat':'Republican'}</span><span>· ${tw.state}</span><span>· ${tw.posted_at.slice(0,10)}</span></div><div class="twtext" style="color:#1a2030">${tw.text}</div><div class="twfoot" style="color:#556677"><span>♡ ${tw.likes.toLocaleString()}</span><span>↻ ${tw.retweets.toLocaleString()}</span><span style="margin-left:auto">${timeAgo(tw.posted_at)} ago</span></div></div>`).join('')+`</div>`:'<div class="empty">No tweets found</div>');
+  var sel=document.getElementById('activeMember');
+  if(!sel)return;
+  var memberId=sel.dataset.id;
+  if(!memberId){
+    document.getElementById('tweetFeed').innerHTML='<div class="empty">Select a member to view their tweets</div>';
+    return;
+  }
+  var params='?member_id='+memberId+'&limit=50';
+  var search=document.getElementById('tweetSearch');
+  if(search&&search.value)params+='&search='+encodeURIComponent(search.value);
+  fetch('/api/tweets'+params)
+    .then(r=>r.json())
+    .then(function(tweets){
+      if(!tweets||!tweets.length){
+        document.getElementById('tweetFeed').innerHTML='<div class="empty">No tweets found.</div>';
+        return;
+      }
+      document.getElementById('tweetFeed').innerHTML=tweets.map(function(tw){
+        return '<div class="tweet-card">'
+          +'<div class="twname">@'+tw.handle+'</div>'
+          +'<div class="twtext" style="color:#1a2030">'+tw.text+'</div>'
+          +'<div class="twmeta"><span>'+timeAgo(tw.posted_at)+'</span></div>'
+          +'<div class="twfoot" style="color:#556677"><span>♡ '+tw.likes+'</span><span>↻ '+tw.retweets+'</span></div>'
+          +'</div>';
+      }).join('');
+    }).catch(function(){});
 }
 function clearSearch(){document.getElementById('tweetSearchBox').value='';document.querySelectorAll('.kw-tag').forEach(el=>el.classList.remove('active'));}
 function renderTrends(){
-  var max=trends[0].count;
-  document.getElementById('trendList').innerHTML=trends.slice(0,7).map((t,i)=>`<div class="trend-item"><div style="font-size:11px;font-weight:600;color:#ccc;width:14px;text-align:center">${i+1}</div><div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:500">${t.word}</span><span style="font-size:10px;color:#bbb">${t.count}</span></div><div class="trend-bar"><div class="trend-fill" style="width:${Math.round(t.count/max*100)}%"></div></div></div></div>`).join('');
+  fetch('/api/trending')
+    .then(r=>r.json())
+    .then(data=>{
+      if(!data||!data.length){return;}
+      var el=document.getElementById('trendList');
+      if(!el)return;
+      el.innerHTML=data.slice(0,10).map(function(t,i){
+        return '<div class="trend-item" onclick="setKw(\''+t.word+'\')">'
+          +'<span class="trend-rank">'+(i+1)+'</span>'
+          +'<span class="trend-word">'+t.word+'</span>'
+          +'<span class="trend-count">'+t.count+'</span>'
+          +'</div>';
+      }).join('');
+    }).catch(function(){});
 }
 function renderKwTags(){document.getElementById('kwTags').innerHTML=kwList.map(k=>`<div class="kw-tag" onclick="this.classList.toggle('active')">${k}</div>`).join('');}
 function renderToday(){
   document.getElementById('todayDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-  document.getElementById('todayFeed').innerHTML=todayMockTweets.map((tw,i)=>`<div class="today-card">${i<3?`<div class="today-rank">#${i+1} TODAY</div>`:''}<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><div class="av ${tw.party.toLowerCase()}" style="width:36px;height:36px;font-size:11px">${ini(tw.name)}</div><div><div style="font-size:13px;font-weight:600;color:#0d1b2e">${tw.name}</div><div style="font-size:11px;color:#888;display:flex;gap:5px;align-items:center"><span style="color:#2563eb">@${tw.handle}</span><span class="badge ${tw.party.toLowerCase()}">${tw.party==='D'?'Democrat':tw.party==='R'?'Republican':'Independent'}</span><span>· ${tw.state}</span></div></div></div><div class="twtext" style="color:#1a2030">${tw.text}</div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px"><div class="twfoot" style="color:#556677"><span>♡ ${tw.likes.toLocaleString()}</span><span>↻ ${tw.retweets.toLocaleString()}</span><span>${timeAgo(tw.posted_at)} ago</span></div><span style="font-size:10px;padding:2px 7px;border-radius:12px;background:#f0f0f0;color:#a8b0c0">${tw.topic}</span></div></div>`).join('');
+  var topic=activeTodayFilt||'all';
+  fetch('/api/tweets/today?limit=50'+(topic!=='all'?'&topic='+topic:''))
+    .then(r=>r.json())
+    .then(function(tweets){
+      if(!tweets||!tweets.length){
+        document.getElementById('todayFeed').innerHTML='<div class="empty">No tweets found for today. Check back after the scraper runs at 8pm Eastern.</div>';
+        return;
+      }
+      document.getElementById('todayFeed').innerHTML=tweets.map(function(tw,i){
+        return '<div class="today-card">'
+          +(i<3?'<div class="today-rank">#'+(i+1)+' TODAY</div>':'')
+          +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">'
+          +'<div class="av '+tw.party.toLowerCase()+'" style="width:36px;height:36px;font-size:11px">'+ini(tw.name)+'</div>'
+          +'<div><div style="font-size:13px;font-weight:600;color:#0d1b2e">'+tw.name+'</div>'
+          +'<div style="font-size:11px;color:#888;display:flex;gap:5px;align-items:center">'
+          +'<span style="color:#2563eb">@'+tw.handle+'</span>'
+          +'<span class="badge '+tw.party.toLowerCase()+'">'+(tw.party==='D'?'Democrat':tw.party==='R'?'Republican':'Independent')+'</span>'
+          +'<span>'+tw.state+'</span></div></div></div>'
+          +'<div class="twtext" style="color:#1a2030">'+tw.text+'</div>'
+          +'<div class="twfoot" style="color:#556677"><span>♡ '+tw.likes+'</span><span>↻ '+tw.retweets+'</span><span>'+timeAgo(tw.posted_at)+'</span></div>'
+          +'</div>';
+      }).join('');
+    }).catch(function(){
+      document.getElementById('todayFeed').innerHTML='<div class="empty">Could not load tweets. Please try again.</div>';
+    });
 }
 function setTodayFilt(el){document.querySelectorAll('#tab-today .filt').forEach(x=>x.classList.remove('active'));el.classList.add('active');}
 function renderRadarCloud(){
