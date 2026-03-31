@@ -116,7 +116,7 @@ export async function seedMembers() {
 // ── Batch scrape (staggered to avoid rate limits) ────────────────────────────
 export async function batchScrape(handles?: string[], tweetsPerMember = 10) {
   const targets = handles
-    ? allMembers.filter(m => handles.includes(m.handle))
+    ? handles.map((h: string) => ({ handle: h, id: 0, name: h, party: '', chamber: '', state: '', district: null }))
     : allMembers
 
   let total = 0
