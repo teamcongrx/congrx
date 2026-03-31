@@ -17,7 +17,17 @@ export async function GET(req: NextRequest) {
     // Scrape 10 tweets per member, all 535 members
     // At 1.5s delay between members this takes ~13 minutes
     // Vercel Hobby has 10s function limit — use Pro (300s) or break into batches
-    const total = await batchScrape(undefined, 10)
+    // REMOVE this:
+const total = await batchScrape(undefined, 10)
+
+// REPLACE with this:
+const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0')
+const { data: members } = await supabase
+  .from('members')
+  .select('id, name, handle, party, chamber, state, district')
+  .order('id')
+  .range(offset, offset + 9)
+const total = await batchScrape(members?.map((m: any) => m.handle), 5)
     return NextResponse.json({ ok: true, tweets_scraped: total })
   } catch (err: any) {
     console.error('Scrape failed:', err.message)
