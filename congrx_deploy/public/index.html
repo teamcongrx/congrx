@@ -847,6 +847,7 @@ function setChamber(c){
   var rep=(isSenate?mockSenators:mockHouseMembers).filter(function(m){return m.party==='R';}).length;
   var dem=(isSenate?mockSenators:mockHouseMembers).filter(function(m){return m.party==='D';}).length;
   var ind=(isSenate?mockSenators:mockHouseMembers).filter(function(m){return m.party!=='R'&&m.party!=='D';}).length;
+  var label=isSenate?'Total senators':'Seated representatives';
   document.getElementById('stat-total-label').textContent=label;
   document.getElementById('stat-total-val').textContent=total;
   document.getElementById('stat-rep-val').textContent=rep;
