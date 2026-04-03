@@ -34,12 +34,20 @@ export async function GET(req: NextRequest) {
 
     for (const member of members) {
       try {
-        const res = await fetch(
-          `https://api.twitter.com/2/tweets/search/recent?query=from:${member.handle} -is:retweet&max_results=10&tweet.fields=public_metrics,created_at,text`,
-          { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
-        )
-        const json = await res.json()
-        const tweets = json.data || []
+        const userRes = await fetch(
+  `https://api.twitter.com/2/users/by/username/${member.handle}`,
+  { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
+)
+const userJson = await userRes.json()
+const userId = userJson.data?.id
+if (!userId) { console.error(`✗ ${member.handle}: user not found`); continue }
+
+const res = await fetch(
+  `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text&exclude=retweets`,
+  { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
+)
+const json = await res.json()
+const tweets = json.data || []
 
         if (tweets.length) {
           const rows = tweets.map((tw: any) => ({
