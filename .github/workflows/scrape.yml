@@ -20,7 +20,4 @@ jobs:
           TWITTER_AUTH_TOKEN: ${{ secrets.TWITTER_AUTH_TOKEN }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: npx ts-node --skip-project -e "
-          const { batchScrape } = require('./lib/scraper');
-          batchScrape(undefined, 5).then((n) => { console.log('Scraped:', n); process.exit(0); }).catch(e => { console.error(e); process.exit(1); });
-        "
+        run: node scripts/scrape.js
