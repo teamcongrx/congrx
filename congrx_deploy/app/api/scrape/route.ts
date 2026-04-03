@@ -2,12 +2,26 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Scraper } from 'agent-twitter-client'
 import { classifyTopic } from '@/lib/scraper'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+let _scraper: Scraper | null = null
+
+async function getScraper() {
+  if (_scraper) return _scraper
+  _scraper = new Scraper()
+  await _scraper.login(
+    process.env.TWITTER_USERNAME!,
+    process.env.TWITTER_PASSWORD!,
+    process.env.TWITTER_EMAIL
+  )
+  return _scraper
+}
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
@@ -30,25 +44,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, tweets_scraped: 0 })
     }
 
+    const scraper = await getScraper()
     let total = 0
 
     for (const member of members) {
       try {
-        const userRes = await fetch(
-  `https://api.twitter.com/2/users/by/username/${member.handle}`,
-  { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
-)
-const userJson = await userRes.json()
-console.log(`API response for ${member.handle}:`, JSON.stringify(userJson).slice(0, 200))
-const userId = userJson.data?.id
-if (!userId) { console.error(`✗ ${member.handle}: user not found`); continue }
-
-const res = await fetch(
-  `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text&exclude=retweets`,
-  { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
-)
-const json = await res.json()
-const tweets = json.data || []
+        const tweets: any[] = []
+        for await (const tweet of scraper.getTweets(member.handle, 10)) {
+          tweets.push(tweet)
+        }
 
         if (tweets.length) {
           const rows = tweets.map((tw: any) => ({
@@ -60,12 +64,12 @@ const tweets = json.data || []
             state: member.state,
             district: member.district,
             chamber: member.chamber,
-            text: tw.text,
-            likes: tw.public_metrics?.like_count || 0,
-            retweets: tw.public_metrics?.retweet_count || 0,
-            replies: tw.public_metrics?.reply_count || 0,
-            posted_at: tw.created_at,
-            topic: classifyTopic(tw.text)
+            text: tw.text ?? tw.fullText ?? '',
+            likes: tw.likes ?? tw.likeCount ?? 0,
+            retweets: tw.retweets ?? tw.retweetCount ?? 0,
+            replies: tw.replies ?? tw.replyCount ?? 0,
+            posted_at: tw.timeParsed ?? new Date(),
+            topic: classifyTopic(tw.text ?? tw.fullText ?? '')
           }))
 
           await supabase.from('tweets').upsert(rows, { onConflict: 'id', ignoreDuplicates: true })
