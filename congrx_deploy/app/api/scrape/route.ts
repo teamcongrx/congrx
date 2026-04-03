@@ -4,36 +4,47 @@ import { batchScrape } from '@/lib/scraper'
 
 // This endpoint is called by Vercel Cron every 6 hours (see vercel.json).
 // It can also be triggered manually with the correct CRON_SECRET header.
-export async function GET(req: NextRequest) {
-  // Verify cron secret
-  const auth = req.headers.get('authorization')
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+try {
+  const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0')
+  const { data: members } = await supabase
+    .from('members')
+    .select('id, name, handle, party, chamber, state, district')
+    .order('id')
+    .range(offset, offset + 9)
+
+  if (!members?.length) {
+    return NextResponse.json({ ok: true, tweets_scraped: 0 })
   }
 
-  console.log('Starting scheduled tweet scrape...')
-
-  try {
-    // Scrape 10 tweets per member, all 535 members
-    // At 1.5s delay between members this takes ~13 minutes
-    // Vercel Hobby has 10s function limit — use Pro (300s) or break into batches
-    // REMOVE this:
-const total = await batchScrape(undefined, 10)
-
-// REPLACE with this:
-const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0')
-const { data: members } = await supabase
-  .from('members')
-  .select('id, name, handle, party, chamber, state, district')
-  .order('id')
-  .range(offset, offset + 9)
-const total = await batchScrape(members?.map((m: any) => m.handle), 5)
-    return NextResponse.json({ ok: true, tweets_scraped: total })
-  } catch (err: any) {
-    console.error('Scrape failed:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  let total = 0
+  for (const member of members) {
+    try {
+      const res = await fetch(
+        `https://api.twitter.com/2/tweets/search/recent?query=from:${member.handle} -is:retweet&max_results=10&tweet.fields=public_metrics,created_at,text`,
+        { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
+      )
+      const json = await res.json()
+      const tweets = json.data || []
+      if (tweets.length) {
+        const rows = tweets.map((tw: any) => ({
+          id: tw.id, member_id: member.id, handle: member.handle,
+          name: member.name, party: member.party, state: member.state,
+          district: member.district, chamber: member.chamber,
+          text: tw.text, likes: tw.public_metrics?.like_count || 0,
+          retweets: tw.public_metrics?.retweet_count || 0,
+          replies: tw.public_metrics?.reply_count || 0,
+          posted_at: tw.created_at, topic: classifyTopic(tw.text)
+        }))
+        await supabase.from('tweets').upsert(rows, { onConflict: 'id', ignoreDuplicates: true })
+        total += rows.length
+        console.log(`✓ ${member.handle}: ${rows.length} tweets`)
+      }
+      await new Promise(r => setTimeout(r, 500))
+    } catch (err: any) {
+      console.error(`✗ ${member.handle}: ${err.message}`)
+    }
   }
-}
+  return NextResponse.json({ ok: true, tweets_scraped: total })
 
 // Allow longer execution time (requires Vercel Pro)
 export const maxDuration = 300
