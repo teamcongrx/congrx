@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       .from('members')
       .select('id, name, handle, party, chamber, state, district')
       .order('id')
-      .range(offset, offset + 9)
+      .range(offset, offset + 1)
 
     if (!members?.length) {
       return NextResponse.json({ ok: true, tweets_scraped: 0 })
@@ -73,7 +73,7 @@ const tweets = json.data || []
           console.log(`✓ ${member.handle}: ${rows.length} tweets`)
         }
 
-        await new Promise(r => setTimeout(r, 500))
+        await new Promise(r => setTimeout(r, 3000))
       } catch (err: any) {
         console.error(`✗ ${member.handle}: ${err.message}`)
       }
