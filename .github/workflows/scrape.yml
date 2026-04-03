@@ -1,21 +1,19 @@
 name: Scrape Congressional Tweets
-
 on:
   schedule:
-      - cron: '0 */6 * * *'
-        workflow_dispatch:
-
-        jobs:
-          scrape:
-              runs-on: ubuntu-latest
-                  steps:
-                        - name: Trigger scrape batch
-                                run: |
-                                          HOUR=$(date +%H)
-                                                    DAY=$(date +%j)
-                                                              OFFSET=$(( (($DAY * 4 + $HOUR / 6) * 2) % 536 ))
-                                                                        echo "Scraping offset: $OFFSET"
-                                                                                  curl -X GET \
-                                                                                              "https://congrx-xs7p.vercel.app/api/scrape?offset=$OFFSET" \
-                                                                                                          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-                                                                                                                      -H "x-vercel-cron: 1"
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scrape batch
+        run: |
+          HOUR=$(date +%H)
+          DAY=$(date +%j)
+          OFFSET=$(( (($DAY * 4 + $HOUR / 6) * 2) % 536 ))
+          echo "Scraping offset: $OFFSET"
+          curl -X GET \
+            "https://congrx-xs7p.vercel.app/api/scrape?offset=$OFFSET" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "x-vercel-cron: 1"
