@@ -35,13 +35,16 @@ let _scraper: Scraper | null = null
 async function getScraper(): Promise<Scraper> {
   if (_scraper) return _scraper
   _scraper = new Scraper()
-  await _scraper.login(
-    process.env.TWITTER_USERNAME!,
-    process.env.TWITTER_PASSWORD!,
-    process.env.TWITTER_EMAIL,
-  )
-  return _scraper
-}
+  await _scraper.setCookies([
+  {
+    name: 'auth_token',
+    value: process.env.TWITTER_AUTH_TOKEN!,
+    domain: '.twitter.com',
+    path: '/',
+    secure: true,
+    httpOnly: true
+  }
+])
 
 // ── Scrape one member ─────────────────────────────────────────────────────────
 export async function scrapeMember(member: Member, count = 20) {
