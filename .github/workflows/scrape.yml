@@ -7,13 +7,20 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger scrape batch
-        run: |
-          HOUR=$(date +%H)
-          DAY=$(date +%j)
-          OFFSET=$(( (($DAY * 4 + $HOUR / 6) * 2) % 536 ))
-          echo "Scraping offset: $OFFSET"
-          curl -X GET \
-            "https://congrx-xs7p.vercel.app/api/scrape?offset=$OFFSET" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "x-vercel-cron: 1"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - name: Run scraper
+        env:
+          TWITTER_USERNAME: ${{ secrets.TWITTER_USERNAME }}
+          TWITTER_PASSWORD: ${{ secrets.TWITTER_PASSWORD }}
+          TWITTER_EMAIL: ${{ secrets.TWITTER_EMAIL }}
+          TWITTER_AUTH_TOKEN: ${{ secrets.TWITTER_AUTH_TOKEN }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx ts-node --skip-project -e "
+          const { batchScrape } = require('./lib/scraper');
+          batchScrape(undefined, 5).then((n) => { console.log('Scraped:', n); process.exit(0); }).catch(e => { console.error(e); process.exit(1); });
+        "
