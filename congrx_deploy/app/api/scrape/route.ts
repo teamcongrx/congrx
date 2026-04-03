@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
   { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
 )
 const userJson = await userRes.json()
+console.log(`API response for ${member.handle}:`, JSON.stringify(userJson).slice(0, 200))
 const userId = userJson.data?.id
 if (!userId) { console.error(`✗ ${member.handle}: user not found`); continue }
 
