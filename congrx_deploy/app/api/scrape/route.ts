@@ -1,50 +1,80 @@
 /* eslint-disable */
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
-import { batchScrape } from '@/lib/scraper'
+import { createClient } from '@supabase/supabase-js'
+import { classifyTopic } from '@/lib/scraper'
 
-// This endpoint is called by Vercel Cron every 6 hours (see vercel.json).
-// It can also be triggered manually with the correct CRON_SECRET header.
-try {
-  const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0')
-  const { data: members } = await supabase
-    .from('members')
-    .select('id, name, handle, party, chamber, state, district')
-    .order('id')
-    .range(offset, offset + 9)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
-  if (!members?.length) {
-    return NextResponse.json({ ok: true, tweets_scraped: 0 })
+export async function GET(req: NextRequest) {
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let total = 0
-  for (const member of members) {
-    try {
-      const res = await fetch(
-        `https://api.twitter.com/2/tweets/search/recent?query=from:${member.handle} -is:retweet&max_results=10&tweet.fields=public_metrics,created_at,text`,
-        { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
-      )
-      const json = await res.json()
-      const tweets = json.data || []
-      if (tweets.length) {
-        const rows = tweets.map((tw: any) => ({
-          id: tw.id, member_id: member.id, handle: member.handle,
-          name: member.name, party: member.party, state: member.state,
-          district: member.district, chamber: member.chamber,
-          text: tw.text, likes: tw.public_metrics?.like_count || 0,
-          retweets: tw.public_metrics?.retweet_count || 0,
-          replies: tw.public_metrics?.reply_count || 0,
-          posted_at: tw.created_at, topic: classifyTopic(tw.text)
-        }))
-        await supabase.from('tweets').upsert(rows, { onConflict: 'id', ignoreDuplicates: true })
-        total += rows.length
-        console.log(`✓ ${member.handle}: ${rows.length} tweets`)
-      }
-      await new Promise(r => setTimeout(r, 500))
-    } catch (err: any) {
-      console.error(`✗ ${member.handle}: ${err.message}`)
+  console.log('Starting scheduled tweet scrape...')
+
+  try {
+    const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0')
+
+    const { data: members } = await supabase
+      .from('members')
+      .select('id, name, handle, party, chamber, state, district')
+      .order('id')
+      .range(offset, offset + 9)
+
+    if (!members?.length) {
+      return NextResponse.json({ ok: true, tweets_scraped: 0 })
     }
-  }
-  return NextResponse.json({ ok: true, tweets_scraped: total })
 
-// Allow longer execution time (requires Vercel Pro)
+    let total = 0
+
+    for (const member of members) {
+      try {
+        const res = await fetch(
+          `https://api.twitter.com/2/tweets/search/recent?query=from:${member.handle} -is:retweet&max_results=10&tweet.fields=public_metrics,created_at,text`,
+          { headers: { 'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
+        )
+        const json = await res.json()
+        const tweets = json.data || []
+
+        if (tweets.length) {
+          const rows = tweets.map((tw: any) => ({
+            id: tw.id,
+            member_id: member.id,
+            handle: member.handle,
+            name: member.name,
+            party: member.party,
+            state: member.state,
+            district: member.district,
+            chamber: member.chamber,
+            text: tw.text,
+            likes: tw.public_metrics?.like_count || 0,
+            retweets: tw.public_metrics?.retweet_count || 0,
+            replies: tw.public_metrics?.reply_count || 0,
+            posted_at: tw.created_at,
+            topic: classifyTopic(tw.text)
+          }))
+
+          await supabase.from('tweets').upsert(rows, { onConflict: 'id', ignoreDuplicates: true })
+          total += rows.length
+          console.log(`✓ ${member.handle}: ${rows.length} tweets`)
+        }
+
+        await new Promise(r => setTimeout(r, 500))
+      } catch (err: any) {
+        console.error(`✗ ${member.handle}: ${err.message}`)
+      }
+    }
+
+    return NextResponse.json({ ok: true, tweets_scraped: total })
+  } catch (err: any) {
+    console.error('Scrape failed:', err.message)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
 export const maxDuration = 300
