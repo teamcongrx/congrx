@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Self-contained tweet scraper - CommonJS, no TypeScript required
+// Self-contained tweet scraper - CommonJS
 const { Scraper } = require('agent-twitter-client');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -9,15 +9,15 @@ const supabase = createClient(
 );
 
 const TOPICS = {
-  healthcare:     ['health','medicare','medicaid','insurance','hospital','drug','prescription'],
-  economy:        ['economy','economic','inflation','jobs','unemployment','trade','tariff','wages'],
-  immigration:    ['immigration','border','migrant','asylum','deportation','ice','undocumented'],
-  climate:        ['climate','environment','carbon','emissions','clean energy','epa','solar'],
-  budget:         ['budget','spending','deficit','appropriations','funding','fiscal'],
-  'foreign policy':['ukraine','russia','china','israel','nato','foreign','sanctions','war'],
-  education:      ['education','school','student','university','college','teacher'],
-  taxes:          ['tax','irs','revenue','cuts','deduction','wealthy','corporations'],
-  government:     ['government','congress','senate','house','legislation','bill','vote'],
+  healthcare:       ['health','medicare','medicaid','insurance','hospital','drug','prescription'],
+  economy:          ['economy','economic','inflation','jobs','unemployment','trade','tariff','wages'],
+  immigration:      ['immigration','border','migrant','asylum','deportation','ice','undocumented'],
+  climate:          ['climate','environment','carbon','emissions','clean energy','epa','solar'],
+  budget:           ['budget','spending','deficit','appropriations','funding','fiscal'],
+  'foreign policy': ['ukraine','russia','china','israel','nato','foreign','sanctions','war'],
+  education:        ['education','school','student','university','college','teacher'],
+  taxes:            ['tax','irs','revenue','cuts','deduction','wealthy','corporations'],
+  government:       ['government','congress','senate','house','legislation','bill','vote'],
 };
 
 function classifyTopic(text) {
@@ -28,23 +28,42 @@ function classifyTopic(text) {
   return 'general';
 }
 
+async function login(scraper) {
+  // Try cookie auth first (faster, no rate limit)
+  const authToken = process.env.TWITTER_AUTH_TOKEN;
+  if (authToken) {
+    console.log('Trying cookie auth...');
+    await scraper.setCookies([
+      `auth_token=${authToken}; Domain=.twitter.com; Path=/; Secure; HttpOnly`
+    ]);
+    if (await scraper.isLoggedIn()) {
+      console.log('Logged in via cookie');
+      return true;
+    }
+    console.log('Cookie auth failed, trying username/password...');
+  }
+
+  // Fall back to username/password
+  const username = process.env.TWITTER_USERNAME;
+  const password = process.env.TWITTER_PASSWORD;
+  const email = process.env.TWITTER_EMAIL;
+
+  if (!username || !password) throw new Error('No Twitter credentials available');
+
+  await scraper.login(username, password, email);
+  const ok = await scraper.isLoggedIn();
+  console.log('Logged in via username/password:', ok);
+  return ok;
+}
+
 async function main() {
   console.log('Starting scraper...');
 
-  // Auth via cookie token
   const scraper = new Scraper();
-  const authToken = process.env.TWITTER_AUTH_TOKEN;
-  if (!authToken) throw new Error('TWITTER_AUTH_TOKEN not set');
+  const loggedIn = await login(scraper);
+  if (!loggedIn) throw new Error('All login methods failed');
 
-  await scraper.setCookies([
-    `auth_token=${authToken}; Domain=.twitter.com; Path=/; Secure; HttpOnly`
-  ]);
-
-  const loggedIn = await scraper.isLoggedIn();
-  console.log('Logged in:', loggedIn);
-  if (!loggedIn) throw new Error('Twitter login failed - auth_token may be expired');
-
-  // Rotating batch: 2 members per run
+  // Rotating batch: 2 members per run, cycling through all 535+
   const now = new Date();
   const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
   const slot = Math.floor(now.getUTCHours() / 6);
@@ -61,7 +80,7 @@ async function main() {
   if (error) throw new Error('Supabase error: ' + error.message);
   if (!members || !members.length) { console.log('No members found'); return; }
 
-  console.log('Scraping', members.length, 'members:', members.map(m => m.handle).join(', '));
+  console.log('Scraping:', members.map(m => m.handle).join(', '));
 
   let total = 0;
   for (const member of members) {
@@ -69,6 +88,7 @@ async function main() {
       const tweets = [];
       for await (const tweet of scraper.getTweets(member.handle, 10)) {
         if (!tweet.isRetweet) tweets.push(tweet);
+        if (tweets.length >= 10) break;
       }
 
       if (tweets.length) {
@@ -94,13 +114,13 @@ async function main() {
           .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
 
         if (upsertErr) {
-          console.error('Upsert error for', member.handle, ':', upsertErr.message);
+          console.error('Upsert error for', member.handle + ':', upsertErr.message);
         } else {
           total += rows.length;
           console.log('OK', member.handle + ':', rows.length, 'tweets');
         }
       } else {
-        console.log('-', member.handle, ': no tweets');
+        console.log('-', member.handle, ': no tweets found');
       }
 
       await new Promise(r => setTimeout(r, 2000));
